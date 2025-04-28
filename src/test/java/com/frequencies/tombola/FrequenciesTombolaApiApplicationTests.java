@@ -1,4 +1,4 @@
-package com.frequencies.frequencies_tombola_api;
+package com.frequencies.tombola;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

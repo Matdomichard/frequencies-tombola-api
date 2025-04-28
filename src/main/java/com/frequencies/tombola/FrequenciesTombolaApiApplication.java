@@ -1,4 +1,4 @@
-package com.frequencies.frequencies_tombola_api;
+package com.frequencies.tombola;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

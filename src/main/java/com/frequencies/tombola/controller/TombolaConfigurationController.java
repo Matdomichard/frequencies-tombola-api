@@ -1,5 +1,6 @@
 package com.frequencies.tombola.controller;
 
+import com.frequencies.tombola.dto.TombolaConfigurationDto;
 import com.frequencies.tombola.service.TombolaConfigurationService;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,30 +14,25 @@ public class TombolaConfigurationController {
         this.configService = configService;
     }
 
-    // --- Set number of tickets ---
-    @PostMapping("/tickets")
-    public void setTicketsPerParticipant(@RequestParam int count) {
-        configService.setTicketsPerParticipant(count);
+    @GetMapping
+    public TombolaConfigurationDto getConfig() {
+        return TombolaConfigurationDto.builder()
+                .ticketsPerParticipant(configService.getTicketsPerParticipant())
+                .guaranteeOneLotPerParticipant(configService.isGuaranteeEnabled())
+                .build();
     }
 
-    @GetMapping("/tickets")
-    public int getTicketsPerParticipant() {
-        return configService.getTicketsPerParticipant();
-    }
-
-    // --- Enable/Disable Guarantee ---
-    @PostMapping("/guarantee/enable")
-    public void enableGuarantee() {
-        configService.enableGuaranteeOneLotPerParticipant();
-    }
-
-    @PostMapping("/guarantee/disable")
-    public void disableGuarantee() {
-        configService.disableGuaranteeOneLotPerParticipant();
-    }
-
-    @GetMapping("/guarantee")
-    public boolean isGuaranteeEnabled() {
-        return configService.isGuaranteeEnabled();
+    @PutMapping
+    public void updateConfig(@RequestBody TombolaConfigurationDto dto) {
+        if (dto.getTicketsPerParticipant() != null) {
+            configService.setTicketsPerParticipant(dto.getTicketsPerParticipant());
+        }
+        if (dto.getGuaranteeOneLotPerParticipant() != null) {
+            if (dto.getGuaranteeOneLotPerParticipant()) {
+                configService.enableGuaranteeOneLotPerParticipant();
+            } else {
+                configService.disableGuaranteeOneLotPerParticipant();
+            }
+        }
     }
 }

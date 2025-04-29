@@ -11,7 +11,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
@@ -21,20 +20,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(withDefaults()) // Activates cors config
+                .cors(withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/config/**"
                         ).permitAll()
-                        .anyRequest().hasRole("ADMIN")
-                )
-                .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/lottery/draw").hasRole("ADMIN")
+                        .requestMatchers("/lottery/draw").hasRole("ADMIN") // ⚡ attention ici ton chemin est sans /api
                         .anyRequest().authenticated()
                 )
-                .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(withDefaults());
 
         return http.build();
@@ -43,7 +39,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // to replace with frontend
+        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // Frontend origin
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

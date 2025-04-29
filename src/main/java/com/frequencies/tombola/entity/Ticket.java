@@ -25,6 +25,9 @@ public class Ticket {
     @Column(nullable = false)
     private boolean isWinner = false;
 
+    @Column(nullable = false)
+    private boolean hasClaimedPrize = false;
+
     public String getPlayerName() {
         return this.player.getName();
     }

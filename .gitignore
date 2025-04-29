@@ -26,3 +26,7 @@ replay_pid*
 .idea/
 *.iml
 *.xml
+
+# Ignore the local Spring Boot config
+src/main/resources/application.properties
+

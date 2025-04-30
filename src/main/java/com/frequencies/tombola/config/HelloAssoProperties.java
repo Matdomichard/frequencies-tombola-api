@@ -12,6 +12,6 @@ import org.springframework.context.annotation.Configuration;
 public class HelloAssoProperties {
     private String clientId;
     private String clientSecret;
-    private String apiUrl = "https://api.helloasso.com"; // Valeur par défaut
+    private String apiUrl = "https://api.helloasso.com";
     private String organizationSlug;
 }

@@ -1,24 +1,31 @@
 package com.frequencies.tombola.controller;
 
-import com.frequencies.tombola.service.impl.HelloAssoService;
+import com.frequencies.tombola.dto.helloasso.HelloAssoParticipantDto;
+import com.frequencies.tombola.service.HelloAssoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Controller for interacting with HelloAsso API.
  */
 @RestController
-@RequestMapping("/api/helloasso")
+@RequestMapping("/helloasso")
 @RequiredArgsConstructor
 public class HelloAssoController {
 
     private final HelloAssoService helloAssoService;
 
     /**
-     * Endpoint to retrieve HelloAsso forms.
+     * Get participants who paid on HelloAsso for a given form.
+     * Example URL: /helloasso/participants?formType=events&formSlug=tombola-1
      */
-    @GetMapping("/forms")
-    public String getForms() {
-        return helloAssoService.getForms();
+    @GetMapping("/participants")
+    public List<HelloAssoParticipantDto> getPaidParticipants(
+            @RequestParam String formType,
+            @RequestParam String formSlug
+    ) {
+        return helloAssoService.getPaidParticipants(formType, formSlug);
     }
 }

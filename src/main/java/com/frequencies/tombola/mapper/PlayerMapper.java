@@ -2,25 +2,29 @@ package com.frequencies.tombola.mapper;
 
 import com.frequencies.tombola.dto.PlayerDto;
 import com.frequencies.tombola.entity.Player;
+import org.springframework.stereotype.Component;
 
+@Component
 public class PlayerMapper {
 
-    public static PlayerDto toDto(Player player) {
+    public PlayerDto toDto(Player player) {
         return PlayerDto.builder()
                 .id(player.getId())
-                .name(player.getName())
+                .firstName(player.getFirstName())
+                .lastName(player.getLastName())
                 .email(player.getEmail())
-                .phoneNumber(player.getPhoneNumber())
+                .phone(player.getPhoneNumber())
                 .hasCollectedPrize(player.isHasCollectedPrize())
                 .build();
     }
 
-    public static Player toEntity(PlayerDto dto) {
+    public Player toEntity(PlayerDto dto) {
         return Player.builder()
                 .id(dto.getId())
-                .name(dto.getName())
+                .firstName(dto.getFirstName())
+                .lastName(dto.getLastName())
                 .email(dto.getEmail())
-                .phoneNumber(dto.getPhoneNumber())
+                .phoneNumber(dto.getPhone())
                 .hasCollectedPrize(dto.isHasCollectedPrize())
                 .build();
     }

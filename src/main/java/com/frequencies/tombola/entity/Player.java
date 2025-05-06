@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "player")
+@Table(name = "players")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,10 +14,16 @@ public class Player {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    private String firstName;
+    private String lastName;
     private String email;
-    private String phoneNumber;
 
-    @Column(nullable = false)
+    private String phoneNumber;
+    @Builder.Default
     private boolean hasCollectedPrize = false;
+
+    // lien vers la tombola
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tombola_id", nullable = false)
+    private Tombola tombola;
 }

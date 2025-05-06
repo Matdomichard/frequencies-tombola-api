@@ -1,5 +1,6 @@
 package com.frequencies.tombola.service;
 
+import com.frequencies.tombola.dto.PlayerDto;
 import com.frequencies.tombola.dto.TombolaDto;
 
 import java.util.List;
@@ -10,4 +11,5 @@ public interface TombolaService {
     Optional<TombolaDto> getById(Long id);
     TombolaDto create(TombolaDto dto);
     void delete(Long id);
+    List<PlayerDto> getPlayers(Long tombolaId);
 }

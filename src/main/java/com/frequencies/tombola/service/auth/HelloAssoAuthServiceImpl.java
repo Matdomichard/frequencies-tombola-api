@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -35,6 +37,7 @@ public class HelloAssoAuthServiceImpl implements HelloAssoAuthService {
     @Override
     public String getAccessToken() {
         if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime) {
+            log.info("Réponse token: {}", cachedToken);
             return cachedToken;
         }
 
@@ -43,12 +46,12 @@ public class HelloAssoAuthServiceImpl implements HelloAssoAuthService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        Map<String, String> bodyMap = new HashMap<>();
-        bodyMap.put("grant_type", "client_credentials");
-        bodyMap.put("client_id", clientId);
-        bodyMap.put("client_secret", clientSecret);
+        MultiValueMap<String, String> bodyMap = new LinkedMultiValueMap<>();
+        bodyMap.add("grant_type", "client_credentials");
+        bodyMap.add("client_id", clientId);
+        bodyMap.add("client_secret", clientSecret);
 
-        HttpEntity<Map<String, String>> request = new HttpEntity<>(bodyMap, headers);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(bodyMap, headers);
 
         try {
             ResponseEntity<TokenResponse> response = restTemplate.postForEntity(tokenUrl, request, TokenResponse.class);

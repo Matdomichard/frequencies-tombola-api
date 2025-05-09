@@ -5,10 +5,14 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 public interface HelloAssoService {
-    List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug);
-    List<HelloAssoFormDto> getAvailableForms();
+    HelloAssoFormsResponse getAvailableForms();
 
-    // New method to fetch payments with all query params
+    /**
+     * Fetch all paid participants for a given formType+formSlug.
+     */
+    List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug); /**
+     * List payments for the given form
+     */
     HelloAssoOrdersResponse getPayments(
             String formType,
             String formSlug,
@@ -23,4 +27,7 @@ public interface HelloAssoService {
             String sortField,
             boolean withCount
     );
+
+
+
 }

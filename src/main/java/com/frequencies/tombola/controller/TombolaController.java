@@ -1,7 +1,9 @@
 package com.frequencies.tombola.controller;
 
+import com.frequencies.tombola.dto.LotDto;
 import com.frequencies.tombola.dto.PlayerDto;
 import com.frequencies.tombola.dto.TombolaDto;
+import com.frequencies.tombola.service.LotService;
 import com.frequencies.tombola.service.PlayerService;
 import com.frequencies.tombola.service.TombolaService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ public class TombolaController {
 
     private final TombolaService tombolaService;
     private final PlayerService playerService;
+    private final LotService lotService;
 
     /** GET /tombolas */
     @GetMapping
@@ -51,7 +54,7 @@ public class TombolaController {
         return ResponseEntity.noContent().build();
     }
 
-    // --- tout ce qui concerne les joueurs d’une tombola : ---
+    // --- players routes ---
 
     /** GET /tombolas/{id}/players */
     @GetMapping("/{id}/players")
@@ -68,5 +71,26 @@ public class TombolaController {
     ) {
         log.info("POST /tombolas/{}/players", tombolaId);
         return ResponseEntity.ok(playerService.createPlayer(tombolaId, playerDto));
+    }
+
+    // --- lots routes ---
+
+    /** GET /tombolas/{id}/lots */
+    @GetMapping("/{id}/lots")
+    public ResponseEntity<List<LotDto>> getLots(@PathVariable("id") Long tombolaId) {
+        log.info("GET /tombolas/{}/lots", tombolaId);
+        return ResponseEntity.ok(lotService.getLotsByTombola(tombolaId));
+    }
+
+
+
+    /** POST /tombolas/{id}/lots */
+    @PostMapping("/{id}/lots")
+    public ResponseEntity<LotDto> createLot(
+            @PathVariable("id") Long tombolaId,
+            @RequestBody LotDto dto
+    ) {
+        log.info("POST /tombolas/{}/lots → name={}", tombolaId, dto.getName());
+        return ResponseEntity.ok(lotService.createLot(tombolaId, dto));
     }
 }

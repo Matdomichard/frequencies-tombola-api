@@ -1,7 +1,12 @@
 package com.frequencies.tombola.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import com.frequencies.tombola.entity.LotStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -9,9 +14,13 @@ import lombok.*;
 @Builder
 public class LotDto {
     private Long id;
-
-    @NotBlank(message = "Le nom est obligatoire")
     private String name;
-
     private String description;
+    private String donorName;
+    private String donorContact;
+    private BigDecimal value;
+    private String imageUrl;
+    private LotStatus status;
+    private boolean claimed;
+    private Long assignedToId;
 }

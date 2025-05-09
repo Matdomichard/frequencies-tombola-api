@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/players")
@@ -46,5 +47,17 @@ public class PlayerController {
         playerService.deletePlayer(id);
         return ResponseEntity.noContent().build();
     }
+
+    /** PATCH /players/{id} */
+    @PatchMapping("/{id}")
+    public ResponseEntity<PlayerDto> patchPlayer(
+            @PathVariable Long id,
+            @RequestBody Map<String,Object> changes
+    ) {
+        return playerService.patchPlayer(id, changes)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
 
 }

@@ -1,6 +1,7 @@
 package com.frequencies.tombola.controller;
 
 import com.frequencies.tombola.dto.helloasso.HelloAssoFormDto;
+import com.frequencies.tombola.dto.helloasso.HelloAssoFormsResponse;
 import com.frequencies.tombola.dto.helloasso.HelloAssoParticipantDto;
 import com.frequencies.tombola.service.HelloAssoService;
 import lombok.RequiredArgsConstructor;
@@ -15,11 +16,11 @@ public class HelloAssoController {
 
     private final HelloAssoService helloAssoService;
 
-    // 1) Liste des formulaires
     @GetMapping("/forms")
-    public List<HelloAssoFormDto> getAvailableForms() {
+    public HelloAssoFormsResponse getAvailableForms() {
         return helloAssoService.getAvailableForms();
     }
+
 
     // 2) Participants payés d’un formulaire
     @GetMapping("/participants")

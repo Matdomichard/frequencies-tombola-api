@@ -3,6 +3,7 @@ package com.frequencies.tombola.controller;
 import com.frequencies.tombola.dto.helloasso.HelloAssoOrdersResponse;
 import com.frequencies.tombola.service.HelloAssoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/helloasso/forms")
 @RequiredArgsConstructor
@@ -38,6 +40,7 @@ public class HelloAssoPaymentController {
                 continuationToken, states,
                 sortOrder, sortField, withCount
         );
+        log.info("Voici le nombre de tickets de form {}", resp);
         return ResponseEntity.ok(resp);
     }
 }

@@ -11,6 +11,7 @@ public class HelloAssoPayer {
     private String lastName;
     private String email;
     private String phone;
+    private int ticketNumber;
 }
 
 

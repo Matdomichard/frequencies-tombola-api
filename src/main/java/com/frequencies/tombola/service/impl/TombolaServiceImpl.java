@@ -14,13 +14,14 @@ import com.frequencies.tombola.service.PlayerService;
 import com.frequencies.tombola.service.TombolaService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TombolaServiceImpl implements TombolaService {
@@ -43,6 +44,8 @@ public class TombolaServiceImpl implements TombolaService {
                 dto.getHelloAssoFormSlug()
         );
 
+        log.info("paid -->", paid);
+
         // 3) map & save them as Player entities
         List<Player> players = paid.stream()
                 .map(p -> Player.builder()
@@ -50,6 +53,7 @@ public class TombolaServiceImpl implements TombolaService {
                         .lastName(    p.getLastName())
                         .email(       p.getEmail())
                         .phoneNumber( p.getPhone())
+                        .ticketNumber(p.getTicketNumber())
                         .tombola(     saved)
                         .build())
                 .collect(Collectors.toList());

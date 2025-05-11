@@ -5,6 +5,7 @@ import com.frequencies.tombola.dto.helloasso.*;
 import com.frequencies.tombola.service.HelloAssoService;
 import com.frequencies.tombola.service.auth.HelloAssoAuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HelloAssoServiceImpl implements HelloAssoService {
@@ -52,10 +54,8 @@ public class HelloAssoServiceImpl implements HelloAssoService {
 
     @Override
     public List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug) {
-        // 1) get your token + build headers
         HttpHeaders headers = authHeaders();
 
-        // 2) build the URL with from/to wide window
         Instant now = Instant.now();
         String from = now.minus(30, ChronoUnit.DAYS).toString();
         String to   = now.plus(1, ChronoUnit.DAYS).toString();
@@ -75,19 +75,38 @@ public class HelloAssoServiceImpl implements HelloAssoService {
                 HelloAssoOrdersResponse.class
         );
 
+        if (resp.getBody() == null || resp.getBody().getData() == null) {
+            log.warn("No data received from HelloAsso");
+            return List.of();
+        }
+
         return resp.getBody().getData().stream()
-                .map(o -> {
-                    HelloAssoPayer p = o.getPayer();
+                .map(payment -> {
+                    var payer = payment.getPayer();
+
+                    // Calculate number of tickets using shareAmount/shareItemAmount
+                    int ticketCount = payment.getItems().stream()
+                            .filter(item -> "Registration".equals(item.getType()))
+                            .mapToInt(item -> {
+                                double shareItemAmount = item.getShareItemAmount();
+                                if (shareItemAmount > 0) {
+                                    return (int) (item.getShareAmount() / shareItemAmount);
+                                }
+                                return 0;
+                            })
+                            .sum();
+
+
                     return HelloAssoParticipantDto.builder()
-                            .firstName(p.getFirstName())
-                            .lastName( p.getLastName())
-                            .email(    p.getEmail())
-                            .phone(    p.getPhone())
-                            .state(    o.getState())
+                            .firstName(payer.getFirstName())
+                            .lastName(payer.getLastName())
+                            .email(payer.getEmail())
+                            .phone(payer.getPhone())
+                            .ticketNumber(ticketCount)
+                            .state(payment.getState())
                             .build();
                 })
                 .collect(Collectors.toList());
-
     }
 
     @Override
@@ -110,15 +129,19 @@ public class HelloAssoServiceImpl implements HelloAssoService {
                 .fromUriString(cfg.getApiUrl())
                 .path("/v5/organizations/{org}/forms/{type}/{slug}/payments")
                 .queryParam("from", from.toString())
-                .queryParam("to",   to.toString())
-                .queryParam("userSearchKey", userSearchKey)
+                .queryParam("to", to.toString())
                 .queryParam("pageIndex", pageIndex)
-                .queryParam("pageSize",  pageSize)
-                .queryParam("continuationToken", continuationToken)
+                .queryParam("pageSize", pageSize)
                 .queryParam("sortOrder", sortOrder)
                 .queryParam("sortField", sortField)
                 .queryParam("withCount", withCount);
-        // only add states if non-null
+
+        if (userSearchKey != null) {
+            uriBuilder.queryParam("userSearchKey", userSearchKey);
+        }
+        if (continuationToken != null) {
+            uriBuilder.queryParam("continuationToken", continuationToken);
+        }
         if (states != null && !states.isEmpty()) {
             uriBuilder.queryParam("states", String.join(",", states));
         }
@@ -133,7 +156,12 @@ public class HelloAssoServiceImpl implements HelloAssoService {
                 new HttpEntity<>(headers),
                 HelloAssoOrdersResponse.class
         );
+
+        if (resp.getBody() != null) {
+            log.debug("Nombre de paiements récupérés : {}",
+                    resp.getBody().getData() != null ? resp.getBody().getData().size() : 0);
+        }
+
         return resp.getBody();
     }
-
-}
+    }

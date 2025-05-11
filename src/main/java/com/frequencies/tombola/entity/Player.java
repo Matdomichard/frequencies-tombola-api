@@ -24,7 +24,8 @@ public class Player {
     @Builder.Default
     private boolean hasCollectedPrize = false;
 
-    /** The ticket number assigned when the tombola was drawn */
+    /** The number of tickets by plaer */
+    @Column(name = "ticket_number")
     private Integer ticketNumber;
 
     /** The prize assigned to this player (could be name or JSON blob) */

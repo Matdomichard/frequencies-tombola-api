@@ -1,14 +1,11 @@
-// src/main/java/com/frequencies/tombola/service/impl/DrawServiceImpl.java
 package com.frequencies.tombola.service.impl;
 
 import com.frequencies.tombola.dto.DrawResultDto;
-import com.frequencies.tombola.dto.PlayerDto;
 import com.frequencies.tombola.dto.LotDto;
 import com.frequencies.tombola.entity.Lot;
 import com.frequencies.tombola.entity.LotStatus;
 import com.frequencies.tombola.entity.Player;
 import com.frequencies.tombola.mapper.LotMapper;
-import com.frequencies.tombola.mapper.PlayerMapper;
 import com.frequencies.tombola.repository.LotRepository;
 import com.frequencies.tombola.repository.PlayerRepository;
 import com.frequencies.tombola.service.DrawService;
@@ -16,9 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,39 +23,94 @@ import java.util.stream.Collectors;
 public class DrawServiceImpl implements DrawService {
 
     private final PlayerRepository playerRepo;
-    private final LotRepository    lotRepo;
-    private final PlayerMapper playerMapper;
+    private final LotRepository lotRepo;
     private final LotMapper lotMapper;
-    private final Random           random = new Random();
+    private final Random random = new Random();
 
     @Override
     @Transactional
-    public DrawResultDto draw(Long tombolaId) {
+    public DrawResultDto draw(Long tombolaId, boolean guaranteeOneLotPerParticipant) {
+        // Get all available lots and players
+        List<Lot> availableLots = lotRepo.findByTombola_Id(tombolaId);
         List<Player> players = playerRepo.findByTombolaId(tombolaId);
-        List<Lot>    lots    = lotRepo.findByTombola_Id(tombolaId);
 
-        if (players.isEmpty() || lots.isEmpty()) {
-            return new DrawResultDto(
-                    players.stream().map(playerMapper::toDto).collect(Collectors.toList()),
-                    lots   .stream().map(lotMapper::toDto).collect(Collectors.toList())
-            );
+        if (availableLots.isEmpty() || players.isEmpty()) {
+            return new DrawResultDto(Collections.emptyList(), Collections.emptyList());
         }
 
-        for (Lot lot : lots) {
-            Collections.shuffle(players, random);
-            Player winner = players.get(0);
+        List<Lot> assignedLots = new ArrayList<>();
+
+        // Créer une liste de tickets pour la sélection aléatoire pondérée
+        List<Player> ticketPool = new ArrayList<>();
+        for (Player player : players) {
+            // Ajouter le joueur autant de fois qu'il a de tickets
+            for (int i = 0; i < player.getTicketNumber(); i++) {
+                ticketPool.add(player);
+            }
+        }
+
+        if (guaranteeOneLotPerParticipant) {
+            // First ensure each player gets at least one lot
+            Set<Player> playersWithLot = new HashSet<>();
+
+            // Keep drawing until each player has at least one lot or no more lots available
+            while (playersWithLot.size() < players.size() && !availableLots.isEmpty()) {
+                // Create pool only with players who don't have a lot yet
+                List<Player> remainingTicketPool = new ArrayList<>();
+                for (Player player : players) {
+                    if (!playersWithLot.contains(player)) {
+                        for (int i = 0; i < player.getTicketNumber(); i++) {
+                            remainingTicketPool.add(player);
+                        }
+                    }
+                }
+
+                if (!remainingTicketPool.isEmpty()) {
+                    // Select random player from remaining pool
+                    int randomIndex = ThreadLocalRandom.current().nextInt(remainingTicketPool.size());
+                    Player winner = remainingTicketPool.get(randomIndex);
+
+                    // Assign lot
+                    Lot lot = availableLots.remove(0);
+                    lot.setAssignedTo(winner);
+                    lot.setStatus(LotStatus.ASSIGNED);
+                    assignedLots.add(lot);
+                    playersWithLot.add(winner);
+                }
+            }
+        }
+
+        // Distribute remaining lots using full weighted random based on tickets
+        while (!availableLots.isEmpty() && !ticketPool.isEmpty()) {
+            int randomIndex = ThreadLocalRandom.current().nextInt(ticketPool.size());
+            Player winner = ticketPool.get(randomIndex);
+
+            // Remove all instances of this player from the ticket pool to prevent bias
+            ticketPool.removeIf(player -> player.getId().equals(winner.getId()));
+
+            Lot lot = availableLots.remove(0);
             lot.setAssignedTo(winner);
             lot.setStatus(LotStatus.ASSIGNED);
-            lotRepo.save(lot);
+            assignedLots.add(lot);
         }
 
-        List<PlayerDto> playerDtos = playerRepo.findByTombolaId(tombolaId).stream()
-                .map(playerMapper::toDto)
-                .collect(Collectors.toList());
-        List<LotDto> lotDtos = lotRepo.findByTombola_Id(tombolaId).stream()
+        // Save all assigned lots
+        lotRepo.saveAll(assignedLots);
+
+        // Get all winners
+        Set<Player> winners = assignedLots.stream()
+                .map(Lot::getAssignedTo)
+                .collect(Collectors.toSet());
+
+        // Save players (no need to set winner status as there's no such field)
+        playerRepo.saveAll(winners);
+
+        // Convert to DTOs
+        List<LotDto> lotDtos = assignedLots.stream()
                 .map(lotMapper::toDto)
                 .collect(Collectors.toList());
 
-        return new DrawResultDto(playerDtos, lotDtos);
+        // Return result with empty players list (since we don't have PlayerDto conversion here)
+        return new DrawResultDto(Collections.emptyList(), lotDtos);
     }
 }

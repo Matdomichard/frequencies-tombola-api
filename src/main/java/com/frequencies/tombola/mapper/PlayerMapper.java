@@ -13,6 +13,7 @@ public class PlayerMapper {
                 .firstName(player.getFirstName())
                 .lastName(player.getLastName())
                 .email(player.getEmail())
+                .ticketNumber(player.getTicketNumber())
                 .phone(player.getPhoneNumber())
                 .hasCollectedPrize(player.isHasCollectedPrize())
                 .build();
@@ -24,6 +25,7 @@ public class PlayerMapper {
                 .firstName(dto.getFirstName())
                 .lastName(dto.getLastName())
                 .email(dto.getEmail())
+                .ticketNumber(dto.getTicketNumber())
                 .phoneNumber(dto.getPhone())
                 .hasCollectedPrize(dto.isHasCollectedPrize())
                 .build();

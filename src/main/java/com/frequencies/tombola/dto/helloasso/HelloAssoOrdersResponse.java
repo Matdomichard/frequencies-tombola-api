@@ -1,6 +1,7 @@
 package com.frequencies.tombola.dto.helloasso;
 
 import com.frequencies.tombola.dto.PlayerDto;
+
 import lombok.Data;
 
 import java.time.OffsetDateTime;
@@ -23,7 +24,7 @@ public class HelloAssoOrdersResponse {
     @Data
     public static class PaymentWrapper {
         private OrderDto order;
-        private HelloAssoPayer payer;          // ← renamed from `player` to `payer`
+        private HelloAssoPayer payer;
         private List<ItemDto> items;
         private OffsetDateTime cashOutDate;
         private String cashOutState;
@@ -40,6 +41,7 @@ public class HelloAssoOrdersResponse {
         private Meta meta;
         private String paymentOffLineMean;
         private List<RefundOperation> refundOperations;
+
     }
 
     @Data

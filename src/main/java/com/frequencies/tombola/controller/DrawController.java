@@ -23,11 +23,13 @@ public class DrawController {
     private final LotService lotService;
 
     @PostMapping("/{id}/draw")
-    public ResponseEntity<DrawResultDto> draw(@PathVariable Long id) {
-        drawService.draw(id);
-        List<PlayerDto> players = playerService.getPlayersByTombola(id);
-        List<LotDto>    lots    = lotService.getLotsByTombola(id);
-        return ResponseEntity.ok(new DrawResultDto(players, lots));
+    public ResponseEntity<DrawResultDto> draw(
+            @PathVariable Long id,
+            @RequestParam(name = "guaranteeOneLotPerParticipant", defaultValue = "false") boolean guaranteeOneLotPerParticipant
+    ) {
+        DrawResultDto result = drawService.draw(id, guaranteeOneLotPerParticipant);
+        return ResponseEntity.ok(result);
     }
+
 }
 

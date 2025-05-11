@@ -24,6 +24,9 @@ public class LotServiceImplTest {
     @Mock
     private LotRepository lotRepository;
 
+    @Mock
+    private LotMapper lotMapper;
+
     @InjectMocks
     private LotServiceImpl lotService;
 
@@ -46,8 +49,17 @@ public class LotServiceImplTest {
                 .description("Description 2")
                 .build();
 
-        lotDto1 = LotMapper.toDto(lot1);
-        lotDto2 = LotMapper.toDto(lot2);
+        lotDto1 = LotDto.builder()
+                .id(1L)
+                .name("Lot 1")
+                .description("Description 1")
+                .build();
+
+        lotDto2 = LotDto.builder()
+                .id(2L)
+                .name("Lot 2")
+                .description("Description 2")
+                .build();
     }
 
     @Test
@@ -55,6 +67,8 @@ public class LotServiceImplTest {
         // given
         List<Lot> lots = Arrays.asList(lot1, lot2);
         when(lotRepository.findAll()).thenReturn(lots);
+        when(lotMapper.toDto(lot1)).thenReturn(lotDto1);
+        when(lotMapper.toDto(lot2)).thenReturn(lotDto2);
 
         // when
         List<LotDto> result = lotService.getAllLots();
@@ -69,6 +83,7 @@ public class LotServiceImplTest {
     void testGetLotByIdFound() {
         // given
         when(lotRepository.findById(1L)).thenReturn(Optional.of(lot1));
+        when(lotMapper.toDto(lot1)).thenReturn(lotDto1);
 
         // when
         Optional<LotDto> result = lotService.getLotById(1L);
@@ -98,14 +113,26 @@ public class LotServiceImplTest {
                 .description("New Description")
                 .build();
 
-        Lot newLot = LotMapper.toEntity(newLotDto);
+        Lot newLot = Lot.builder()
+                .name("New Lot")
+                .description("New Description")
+                .build();
+
         Lot savedLot = Lot.builder()
                 .id(3L)
                 .name("New Lot")
                 .description("New Description")
                 .build();
 
+        LotDto savedLotDto = LotDto.builder()
+                .id(3L)
+                .name("New Lot")
+                .description("New Description")
+                .build();
+
+        when(lotMapper.toEntity(newLotDto)).thenReturn(newLot);
         when(lotRepository.save(any(Lot.class))).thenReturn(savedLot);
+        when(lotMapper.toDto(savedLot)).thenReturn(savedLotDto);
 
         // when
         LotDto result = lotService.createLot(newLotDto);
@@ -123,8 +150,21 @@ public class LotServiceImplTest {
                 .description("Updated Description")
                 .build();
 
+        Lot updatedLot = Lot.builder()
+                .id(1L)
+                .name("Updated Lot")
+                .description("Updated Description")
+                .build();
+
+        LotDto resultLotDto = LotDto.builder()
+                .id(1L)
+                .name("Updated Lot")
+                .description("Updated Description")
+                .build();
+
         when(lotRepository.findById(1L)).thenReturn(Optional.of(lot1));
-        when(lotRepository.save(any(Lot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(lotRepository.save(any(Lot.class))).thenReturn(updatedLot);
+        when(lotMapper.toDto(updatedLot)).thenReturn(resultLotDto);
 
         // when
         Optional<LotDto> result = lotService.updateLot(1L, updatedLotDto);

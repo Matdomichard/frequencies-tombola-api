@@ -1,5 +1,6 @@
 package com.frequencies.tombola.dto;
 
+import com.frequencies.tombola.enums.PaymentMethod;
 import lombok.*;
 
 import java.util.List;
@@ -16,6 +17,6 @@ public class PlayerDto {
     private Long assignedPrizeId;
     private boolean hasCollectedPrize;
     private boolean emailSent;
+    private PaymentMethod paymentMethod;
     private List<LotDto> assignedLots;
 }
-

@@ -16,6 +16,7 @@ public class PlayerMapper {
                 .ticketNumber(player.getTicketNumber())
                 .phone(player.getPhoneNumber())
                 .hasCollectedPrize(player.isHasCollectedPrize())
+                .paymentMethod(player.getPaymentMethod())
                 .build();
     }
 
@@ -28,6 +29,7 @@ public class PlayerMapper {
                 .ticketNumber(dto.getTicketNumber())
                 .phoneNumber(dto.getPhone())
                 .hasCollectedPrize(dto.isHasCollectedPrize())
+                .paymentMethod(dto.getPaymentMethod())
                 .build();
     }
 }

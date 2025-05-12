@@ -1,5 +1,6 @@
 package com.frequencies.tombola.entity;
 
+import com.frequencies.tombola.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,6 +35,11 @@ public class Player {
     /** Has the “congratulations” email been sent to them? */
     @Builder.Default
     private boolean emailSent = false;
+
+    /** Payment method used by the player (CARD, CASH) */
+    @Column(name = "payment_method")
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
 
     /** Back‑reference to the tombola they belong to */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

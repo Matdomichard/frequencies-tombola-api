@@ -5,6 +5,7 @@ import com.frequencies.tombola.dto.TombolaDto;
 import com.frequencies.tombola.dto.helloasso.HelloAssoParticipantDto;
 import com.frequencies.tombola.entity.Player;
 import com.frequencies.tombola.entity.Tombola;
+import com.frequencies.tombola.enums.PaymentMethod;
 import com.frequencies.tombola.mapper.PlayerMapper;
 import com.frequencies.tombola.mapper.TombolaMapper;
 import com.frequencies.tombola.repository.PlayerRepository;
@@ -38,25 +39,27 @@ public class TombolaServiceImpl implements TombolaService {
         // 1) map DTO → entity and save
         Tombola saved = tombolaRepository.save(tombolaMapper.toEntity(dto));
 
-        // 2) pull paid participants from HelloAsso
-        List<HelloAssoParticipantDto> paid = helloAssoService.getPaidParticipants(
+        // 2) pull all participants (paid and free) from HelloAsso
+        List<HelloAssoParticipantDto> participants = helloAssoService.getAllParticipants(
                 dto.getHelloAssoFormType(),
                 dto.getHelloAssoFormSlug()
         );
 
-        log.info("paid -->", paid);
+        log.info("participants --> {}", participants);
 
         // 3) map & save them as Player entities
-        List<Player> players = paid.stream()
+        List<Player> players = participants.stream()
                 .map(p -> Player.builder()
                         .firstName(   p.getFirstName())
                         .lastName(    p.getLastName())
                         .email(       p.getEmail())
                         .phoneNumber( p.getPhone())
                         .ticketNumber(p.getTicketNumber())
+                        .paymentMethod(p.getPaymentMethod())
                         .tombola(     saved)
                         .build())
                 .collect(Collectors.toList());
+
         playerRepository.saveAll(players);
 
         // 4) return the newly‐created tombola as a DTO

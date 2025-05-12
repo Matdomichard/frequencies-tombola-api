@@ -10,7 +10,14 @@ public interface HelloAssoService {
     /**
      * Fetch all paid participants for a given formType+formSlug.
      */
-    List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug); /**
+    List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug);
+
+    /**
+     * Fetch all participants (both paid and free) for a given formType+formSlug.
+     */
+    List<HelloAssoParticipantDto> getAllParticipants(String formType, String formSlug);
+
+    /**
      * List payments for the given form
      */
     HelloAssoOrdersResponse getPayments(

@@ -22,14 +22,13 @@ public class HelloAssoController {
     }
 
 
-    // 2) Participants payés d’un formulaire
+    // All participants from a form (paid and free)
     @GetMapping("/participants")
-    public List<HelloAssoParticipantDto> getPaidParticipants(
+    public List<HelloAssoParticipantDto> getAllParticipants(
             @RequestParam String formType,
             @RequestParam String formSlug
     ) {
-        return helloAssoService.getPaidParticipants(formType, formSlug);
+        return helloAssoService.getAllParticipants(formType, formSlug);
     }
-
 
 }

@@ -7,7 +7,6 @@ import com.frequencies.tombola.service.HelloAssoService;
 import com.frequencies.tombola.service.auth.HelloAssoAuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -15,9 +14,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -29,10 +31,10 @@ public class HelloAssoServiceImpl implements HelloAssoService {
 
     private HttpHeaders authHeaders() {
         String token = auth.getAccessToken();
-        HttpHeaders h = new HttpHeaders();
-        h.setBearerAuth(token);
-        h.setAccept(List.of(MediaType.APPLICATION_JSON));
-        return h;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        return headers;
     }
 
     @Override
@@ -44,275 +46,199 @@ public class HelloAssoServiceImpl implements HelloAssoService {
                 .toUriString();
 
         ResponseEntity<HelloAssoFormsResponse> resp = rest.exchange(
-                url,
-                HttpMethod.GET,
-                new HttpEntity<>(authHeaders()),
+                url, HttpMethod.GET, new HttpEntity<>(authHeaders()),
                 HelloAssoFormsResponse.class
         );
-
         return resp.getBody();
     }
 
     @Override
     public List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug) {
-        HttpHeaders headers = authHeaders();
+        OffsetDateTime from = OffsetDateTime.now().minus(30, ChronoUnit.DAYS);
+        OffsetDateTime to   = OffsetDateTime.now().plus(1, ChronoUnit.DAYS);
 
-        Instant now = Instant.now();
-        String from = now.minus(30, ChronoUnit.DAYS).toString();
-        String to   = now.plus(1, ChronoUnit.DAYS).toString();
+        List<HelloAssoOrdersResponse.PaymentWrapper> allPayments = new ArrayList<>();
+        String continuationToken = null;
+        int page = 1, size = 100;
 
-        // Use the /payments endpoint from the HelloAsso API to get all payments
-        String url = UriComponentsBuilder
-                .fromUriString(cfg.getApiUrl())
-                .path("/v5/organizations/{org}/forms/{type}/{slug}/payments")
-                .queryParam("from", from)
-                .queryParam("to", to)
-                .buildAndExpand(cfg.getOrganizationSlug(), formType, formSlug)
-                .toUriString();
+        do {
+            HelloAssoOrdersResponse resp = getPayments(
+                    formType, formSlug, from, to,
+                    null, page, size,
+                    continuationToken, null,
+                    "Desc", "Date", false
+            );
+            if (resp == null || resp.getData() == null || resp.getData().isEmpty()) break;
+            allPayments.addAll(resp.getData());
+            continuationToken = Optional.ofNullable(resp.getPagination())
+                    .map(HelloAssoOrdersResponse.Pagination::getContinuationToken)
+                    .orElse(null);
+            page++;
+        } while (continuationToken != null);
 
-        ResponseEntity<HelloAssoOrdersResponse> resp = rest.exchange(
-                url,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                HelloAssoOrdersResponse.class
-        );
-
-        if (resp.getBody() == null || resp.getBody().getData() == null) {
-            log.warn("No data received from HelloAsso");
-            return List.of();
-        }
-
-        log.info("Processing {} payments from HelloAsso", resp.getBody().getData().size());
-
-        return resp.getBody().getData().stream()
-                .map(payment -> {
-                    var payer = payment.getPayer();
-
-                    // Log payment details for debugging
-                    log.info("Processing payment: id={}, payer={}, items={}, paymentMeans={}, paymentOffLineMean={}, state={}, formSlug={}", 
-                            payment.getId(), 
-                            payer.getEmail(),
-                            payment.getItems() != null ? payment.getItems().size() : 0,
-                            payment.getPaymentMeans(),
-                            payment.getPaymentOffLineMean(),
-                            payment.getState(),
-                            payment.getOrder() != null ? payment.getOrder().getFormSlug() : "null");
-
-                    // Log first item for debugging
-                    if (payment.getItems() != null && !payment.getItems().isEmpty()) {
-                        var firstItem = payment.getItems().get(0);
-                        log.info("First item: id={}, amount={}, type={}, state={}, name={}", 
-                                firstItem.getId(), 
-                                firstItem.getAmount(),
-                                firstItem.getType(),
-                                firstItem.getState(),
-                                firstItem.getName());
-                    }
-
-                    // Calculate number of tickets using shareAmount/shareItemAmount
-                    int ticketCount = 0;
-                    if (payment.getItems() != null) {
-                        ticketCount = payment.getItems().stream()
-                                .filter(item -> "Registration".equals(item.getType()))
-                                .mapToInt(item -> {
-                                    // For free items (amount = 0), count as 1 ticket
-                                    if (item.getAmount() == 0) {
-                                        return 1;
-                                    }
-                                    // For paid items, calculate based on shareAmount/shareItemAmount
-                                    double shareItemAmount = item.getShareItemAmount();
-                                    if (shareItemAmount > 0) {
-                                        return (int) (item.getShareAmount() / shareItemAmount);
-                                    }
-                                    return 0;
-                                })
-                                .sum();
-                    }
-
-                    // Determine payment method based on paymentMeans, paymentOffLineMean, or free items
-                    PaymentMethod paymentMethod = PaymentMethod.CARD; // Default to card payment
-
-                    // Check if there's an offline payment method
-                    if (payment.getPaymentOffLineMean() != null && !payment.getPaymentOffLineMean().isEmpty()) {
-                        // If there's an offline payment method, it's a cash payment
-                        paymentMethod = PaymentMethod.CASH;
-                        log.info("Payment method set to CASH due to offline payment mean: {}", payment.getPaymentOffLineMean());
-                    } 
-                    // Check if paymentMeans indicates a cash payment
-                    else if ("OfflinePayment".equals(payment.getPaymentMeans())) {
-                        paymentMethod = PaymentMethod.CASH;
-                        log.info("Payment method set to CASH due to payment means: {}", payment.getPaymentMeans());
-                    }
-                    // Check if any item has amount = 0 (promo code/free item)
-                    else if (payment.getItems() != null && payment.getItems().stream().anyMatch(item -> item.getAmount() == 0)) {
-                        paymentMethod = PaymentMethod.CASH;
-                        log.info("Payment method set to CASH due to item having amount = 0");
-                    }
-
-                    log.info("Payment method determined: {}", paymentMethod);
-
-                    // For cash payments, always set state to "Paid"
-                    String state = PaymentMethod.CASH.equals(paymentMethod) ? "Paid" : payment.getState();
-
-                    return HelloAssoParticipantDto.builder()
-                            .firstName(payer.getFirstName())
-                            .lastName(payer.getLastName())
-                            .email(payer.getEmail())
-                            .phone(payer.getPhone())
-                            .ticketNumber(ticketCount)
-                            .state(state)
-                            .paymentMethod(paymentMethod)
-                            .build();
-                })
+        return allPayments.stream()
+                .map(this::toDtoFromPayment)
+                .filter(p -> p.getEmail() != null && !p.getEmail().isBlank())
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<HelloAssoParticipantDto> getAllParticipants(String formType, String formSlug) {
-        // Get paid participants
-        List<HelloAssoParticipantDto> paidParticipants = getPaidParticipants(formType, formSlug);
-        log.info("Found {} paid participants", paidParticipants.size());
+        List<HelloAssoParticipantDto> paid = getPaidParticipants(formType, formSlug);
+        List<HelloAssoParticipantDto> free = getFreeParticipants(formType, formSlug);
 
-        // Get free participants
-        List<HelloAssoParticipantDto> freeParticipants = getFreeParticipants(formType, formSlug);
-        log.info("Found {} free participants", freeParticipants.size());
+        Map<String, HelloAssoParticipantDto> map = new LinkedHashMap<>();
+        Stream.concat(
+                paid.stream().filter(p -> p.getPaymentMethod() == PaymentMethod.CASH),
+                free.stream().filter(p -> p.getPaymentMethod() == PaymentMethod.CASH)
+        ).forEach(p -> map.put(p.getEmail().toLowerCase(), p));
+        Stream.concat(
+                paid.stream().filter(p -> p.getPaymentMethod() != PaymentMethod.CASH),
+                free.stream().filter(p -> p.getPaymentMethod() != PaymentMethod.CASH)
+        ).forEach(p -> map.putIfAbsent(p.getEmail().toLowerCase(), p));
 
-        // Combine both lists without filtering out duplicates
-        List<HelloAssoParticipantDto> allParticipants = new java.util.ArrayList<>();
-        allParticipants.addAll(paidParticipants);
-        allParticipants.addAll(freeParticipants);
-
-        // Log all participants for debugging
-        log.info("All participants: {}", allParticipants);
-
-        // Log count of participants by payment method
-        long cardCount = allParticipants.stream().filter(p -> PaymentMethod.CARD.equals(p.getPaymentMethod())).count();
-        long cashCount = allParticipants.stream().filter(p -> PaymentMethod.CASH.equals(p.getPaymentMethod())).count();
-        log.info("Participants by payment method: CARD={}, CASH={}", cardCount, cashCount);
-
-        return allParticipants;
+        return new ArrayList<>(map.values());
     }
 
     /**
-     * Helper method to fetch free participants for a given formType+formSlug.
-     * This method specifically looks for participants with free tickets or cash payments
-     * that might not be properly captured by getPaidParticipants.
-     * Uses the /items endpoint which works better for cash payments according to user feedback.
+     * Retrieves only participants who have an item with amount == 0.
+     * Paginate using pageIndex until a page returns fewer items than pageSize.
      */
+
     private List<HelloAssoParticipantDto> getFreeParticipants(String formType, String formSlug) {
         HttpHeaders headers = authHeaders();
 
-        Instant now = Instant.now();
-        String from = now.minus(30, ChronoUnit.DAYS).toString();
-        String to   = now.plus(1, ChronoUnit.DAYS).toString();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        String from = Instant.now().minus(30, ChronoUnit.DAYS).atZone(ZoneOffset.UTC).format(fmt);
+        String to   = Instant.now().plus(1, ChronoUnit.DAYS).atZone(ZoneOffset.UTC).format(fmt);
 
-        // Use the /items endpoint from the HelloAsso API to get all items
-        String url = UriComponentsBuilder
-                .fromUriString(cfg.getApiUrl())
-                .path("/v5/organizations/{org}/forms/{type}/{slug}/items")
-                .queryParam("from", from)
-                .queryParam("to", to)
-                .buildAndExpand(cfg.getOrganizationSlug(), formType, formSlug)
-                .toUriString();
+        Map<String, HelloAssoParticipantDto> emailMap = new HashMap<>();
 
-        try {
+        //get items (promo code / free)
+        List<HelloAssoItemDto> items = new ArrayList<>();
+        String cont = null;
+        int page = 1, size = 100;
+        do {
+            String url = UriComponentsBuilder
+                    .fromUriString(cfg.getApiUrl())
+                    .path("/v5/organizations/{org}/forms/{type}/{slug}/items")
+                    .queryParam("from", from)
+                    .queryParam("to", to)
+                    .queryParam("pageIndex", page++)
+                    .queryParam("pageSize", size)
+                    .buildAndExpand(cfg.getOrganizationSlug(), formType, formSlug)
+                    .toUriString();
+
             ResponseEntity<HelloAssoItemListResponse> resp = rest.exchange(
-                    url,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
+                    url, HttpMethod.GET, new HttpEntity<>(headers),
                     HelloAssoItemListResponse.class
             );
+            var data = Optional.ofNullable(resp.getBody())
+                    .map(HelloAssoItemListResponse::getData)
+                    .orElse(List.of());
+            if (data.isEmpty()) break;
+            items.addAll(data);
+            if (data.size() < size) break;
+        } while (true);
 
-            if (resp.getBody() == null || resp.getBody().getData() == null) {
-                log.warn("No item data received from HelloAsso");
-                return List.of();
-            }
+        Map<String, List<HelloAssoItemDto>> byEmail = items.stream()
+                .filter(item -> item.getPayerEmail() != null && !emailMap.containsKey(item.getPayerEmail().toLowerCase()))
+                .collect(Collectors.groupingBy(item -> item.getPayerEmail().toLowerCase()));
 
-            log.info("Processing {} items for free participants", resp.getBody().getData().size());
+        //  building DTO by email
+        return byEmail.entrySet().stream()
+                .map(entry -> {
+                    List<HelloAssoItemDto> group = entry.getValue();
+                    HelloAssoItemDto sample = group.get(0);
 
-            // Filter for items with amount = 0 (free items)
-            List<HelloAssoParticipantDto> freeParticipants = resp.getBody().getData().stream()
-                    .filter(item -> item.getAmount() != null && item.getAmount() == 0)
-                    .map(item -> {
-                        log.info("Found free item: id={}, payer={}, amount={}, status={}", 
-                                item.getId(), 
-                                item.getPayerEmail(),
-                                item.getAmount(),
-                                item.getStatus());
+                    int ticketCount = group.size();
+                    String state    = sample.getState();
 
-                        return HelloAssoParticipantDto.builder()
-                                .firstName(item.getPayerFirstName())
-                                .lastName(item.getPayerLastName())
-                                .email(item.getPayerEmail())
-                                .phone(null) // Phone not available in item data
-                                .ticketNumber(1) // Each free item counts as 1 ticket
-                                .state("Paid") // Free items are always considered paid
-                                .paymentMethod(PaymentMethod.CASH) // Free items are treated as cash payments
-                                .build();
-                    })
-                    .collect(Collectors.toList());
+                    PaymentMethod pm = group.stream().anyMatch(i -> i.getAmount() != null && i.getAmount() > 0)
+                            ? PaymentMethod.CARD
+                            : PaymentMethod.CASH;
 
-            log.info("Found {} free participants using /items endpoint", freeParticipants.size());
-            return freeParticipants;
-        } catch (Exception e) {
-            log.error("Error fetching free participants: {}", e.getMessage(), e);
-            return List.of();
+                    return HelloAssoParticipantDto.builder()
+                            .firstName    (sample.getPayerFirstName())
+                            .lastName     (sample.getPayerLastName())
+                            .email        (sample.getPayerEmail())
+                            .phone        (null)
+                            .ticketNumber (ticketCount)
+                            .state        (state)
+                            .paymentMethod(pm)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private HelloAssoParticipantDto toDtoFromPayment(HelloAssoOrdersResponse.PaymentWrapper payment) {
+        var payer = payment.getPayer();
+        int tickets = Optional.ofNullable(payment.getItems()).orElse(List.of()).stream()
+                .filter(i -> "Registration".equals(i.getType()))
+                .mapToInt(i -> i.getAmount() == 0
+                        ? 1
+                        : (int)(i.getShareAmount() / i.getShareItemAmount()))
+                .sum();
+
+        PaymentMethod pm = PaymentMethod.CARD;
+        if ((payment.getPaymentOffLineMean() != null && !payment.getPaymentOffLineMean().isEmpty())
+                || "OfflinePayment".equals(payment.getPaymentMeans())) {
+            pm = PaymentMethod.CASH;
         }
+        String state = pm == PaymentMethod.CASH ? "Paid" : payment.getState();
+
+        return HelloAssoParticipantDto.builder()
+                .firstName   (payer.getFirstName())
+                .lastName    (payer.getLastName())
+                .email       (payer.getEmail())
+                .phone       (payer.getPhone())
+                .ticketNumber(tickets)
+                .state       (state)
+                .paymentMethod(pm)
+                .build();
     }
 
     @Override
     public HelloAssoOrdersResponse getPayments(
-            String formType,
-            String formSlug,
-            OffsetDateTime from,
-            OffsetDateTime to,
+            String formType, String formSlug,
+            OffsetDateTime from, OffsetDateTime to,
             String userSearchKey,
-            int pageIndex,
-            int pageSize,
+            int pageIndex, int pageSize,
             String continuationToken,
             List<String> states,
-            String sortOrder,
-            String sortField,
-            boolean withCount
+            String sortOrder, String sortField, boolean withCount
     ) {
-        HttpHeaders headers = authHeaders();
-        var uriBuilder = UriComponentsBuilder
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        String fromStr = from.toInstant().atOffset(ZoneOffset.UTC).format(fmt);
+        String toStr   = to  .toInstant().atOffset(ZoneOffset.UTC).format(fmt);
+
+        var builder = UriComponentsBuilder
                 .fromUriString(cfg.getApiUrl())
                 .path("/v5/organizations/{org}/forms/{type}/{slug}/payments")
-                .queryParam("from", from.toString())
-                .queryParam("to", to.toString())
-                .queryParam("pageIndex", pageIndex)
-                .queryParam("pageSize", pageSize)
-                .queryParam("sortOrder", sortOrder)
-                .queryParam("sortField", sortField)
-                .queryParam("withCount", withCount);
+                .queryParam("from", fromStr)
+                .queryParam("to",   toStr)
+                .queryParam("pageSize",   pageSize)
+                .queryParam("sortOrder",   sortOrder)
+                .queryParam("sortField",   sortField)
+                .queryParam("withCount",   withCount);
 
-        if (userSearchKey != null) {
-            uriBuilder.queryParam("userSearchKey", userSearchKey);
+        if (continuationToken == null) {
+            builder.queryParam("pageIndex", pageIndex);
+        } else {
+            builder.queryParam("continuationToken", continuationToken);
         }
-        if (continuationToken != null) {
-            uriBuilder.queryParam("continuationToken", continuationToken);
-        }
-        if (states != null && !states.isEmpty()) {
-            uriBuilder.queryParam("states", String.join(",", states));
-        }
+        if (userSearchKey != null) builder.queryParam("userSearchKey", userSearchKey);
+        if (states != null && !states.isEmpty())
+            builder.queryParam("states", String.join(",", states));
 
-        String url = uriBuilder
+        String url = builder
                 .buildAndExpand(cfg.getOrganizationSlug(), formType, formSlug)
                 .toUriString();
 
         ResponseEntity<HelloAssoOrdersResponse> resp = rest.exchange(
-                url,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
+                url, HttpMethod.GET, new HttpEntity<>(authHeaders()),
                 HelloAssoOrdersResponse.class
         );
-
-        if (resp.getBody() != null) {
-            log.debug("Nombre de paiements récupérés : {}",
-                    resp.getBody().getData() != null ? resp.getBody().getData().size() : 0);
-        }
-
         return resp.getBody();
     }
-    }
+}

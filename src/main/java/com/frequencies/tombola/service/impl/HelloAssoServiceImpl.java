@@ -49,8 +49,18 @@ public class HelloAssoServiceImpl implements HelloAssoService {
                 url, HttpMethod.GET, new HttpEntity<>(authHeaders()),
                 HelloAssoFormsResponse.class
         );
-        return resp.getBody();
+
+        HelloAssoFormsResponse body = resp.getBody();
+        if (body != null && body.getData() != null) {
+            body.setData(
+                    body.getData().stream()
+                            .filter(form -> !"Checkout".equalsIgnoreCase(form.getFormType()))
+                            .collect(Collectors.toList())
+            );
+        }
+        return body;
     }
+
 
     @Override
     public List<HelloAssoParticipantDto> getPaidParticipants(String formType, String formSlug) {

@@ -9,38 +9,41 @@ import org.springframework.stereotype.Component;
 public class LotMapper {
 
     /**
-     * Map entity → DTO, en incluant assignedToId, status et claimed.
+     * Map entity → DTO, including assignedToId, status and claimed.
      */
     public LotDto toDto(Lot e) {
         return LotDto.builder()
                 .id(e.getId())
                 .name(e.getName())
-                .description(e.getDescription())
-                .donorName(e.getDonorName())
-                .donorContact(e.getDonorContact())
+                .donorFirstName(e.getDonorFirstName())
+                .donorLastName(e.getDonorLastName())
+                .donorCompany(e.getDonorCompany())
+                .donorEmail(e.getDonorEmail())
+                .donorPhone(e.getDonorPhone())
                 .value(e.getValue())
                 .imageUrl(e.getImageUrl())
-                .status(e.getStatus())
+                .status(e.getStatus().name())
                 .claimed(e.isClaimed())
                 .assignedToId(e.getAssignedTo() != null ? e.getAssignedTo().getId() : null)
+                .tombolaId(e.getTombola() != null ? e.getTombola().getId() : null)
                 .build();
     }
 
-
     /**
-     * Map DTO → entity.  Les associations tombola et assignedTo
-     * sont gérées en service/controller.
+     * Map DTO → entity. Tombola and assignedTo associations are handled in service/controller.
      */
     public Lot toEntity(LotDto dto) {
         return Lot.builder()
                 .id(dto.getId())
                 .name(dto.getName())
-                .description(dto.getDescription())
-                .donorName(dto.getDonorName())
-                .donorContact(dto.getDonorContact())
+                .donorFirstName(dto.getDonorFirstName())
+                .donorLastName(dto.getDonorLastName())
+                .donorCompany(dto.getDonorCompany())
+                .donorEmail(dto.getDonorEmail())
+                .donorPhone(dto.getDonorPhone())
                 .value(dto.getValue())
                 .imageUrl(dto.getImageUrl())
-                // on n'affecte pas status ni claimed ni assignedTo ici :
+                // status, claimed, assignedTo, tombola handled elsewhere
                 .build();
     }
 }

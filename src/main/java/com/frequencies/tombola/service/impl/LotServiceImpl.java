@@ -53,23 +53,7 @@ public class LotServiceImpl implements LotService {
     @Override
     public List<LotDto> getLotsByTombola(Long tombolaId) {
         return lotRepo.findByTombola_Id(tombolaId).stream()
-                .map(lot -> LotDto.builder()
-                        .id(lot.getId())
-                        .name(lot.getName())
-                        .name(lot.getName())
-                        .description(lot.getDescription())
-                        .donorName(lot.getDonorName())
-                        .donorContact(lot.getDonorContact())
-                        .value(lot.getValue())
-                        .imageUrl(lot.getImageUrl())
-                        .status(lot.getStatus())               // <-- copier le status
-                        .claimed(lot.isClaimed())              // <-- copier claimed
-                        .assignedToId(
-                                lot.getAssignedTo() != null
-                                        ? lot.getAssignedTo().getId()
-                                        : null
-                        )                                      // <-- copier l’ID du joueur
-                        .build())
+                .map(lotMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -78,11 +62,14 @@ public class LotServiceImpl implements LotService {
         return lotRepo.findById(id)
                 .map(existing -> {
                     existing.setName(dto.getName());
-                    existing.setDescription(dto.getDescription());
-                    existing.setDonorName(dto.getDonorName());
-                    existing.setDonorContact(dto.getDonorContact());
+                    existing.setDonorFirstName(dto.getDonorFirstName());
+                    existing.setDonorLastName(dto.getDonorLastName());
+                    existing.setDonorCompany(dto.getDonorCompany());
+                    existing.setDonorEmail(dto.getDonorEmail());
+                    existing.setDonorPhone(dto.getDonorPhone());
                     existing.setValue(dto.getValue());
                     existing.setImageUrl(dto.getImageUrl());
+                    // status, claimed, assignedTo managed elsewhere
                     return lotRepo.save(existing);
                 })
                 .map(lotMapper::toDto);

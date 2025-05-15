@@ -1,26 +1,25 @@
+// src/main/java/com/frequencies/tombola/dto/LotDto.java
 package com.frequencies.tombola.dto;
 
-import com.frequencies.tombola.entity.LotStatus;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 public class LotDto {
     private Long id;
     private String name;
-    private String description;
-    private String donorName;
-    private String donorContact;
+    private String donorFirstName;
+    private String donorLastName;
+    private String donorCompany;
+    private String donorEmail;
+    private String donorPhone;
     private BigDecimal value;
     private String imageUrl;
-    private LotStatus status;
-    private boolean claimed;
+    private String status;
+    private Boolean claimed;
     private Long assignedToId;
+    private Long tombolaId;
 }

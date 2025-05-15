@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -30,8 +29,11 @@ public class DrawServiceImpl implements DrawService {
     @Override
     @Transactional
     public DrawResultDto draw(Long tombolaId, boolean guaranteeOneLotPerParticipant) {
-        // Get all available lots and players
-        List<Lot> availableLots = lotRepo.findByTombola_Id(tombolaId);
+        // Get all available lots and players for this tombola
+        List<Lot> availableLots = lotRepo.findByTombola_Id(tombolaId)
+                .stream()
+                .filter(lot -> lot.getStatus() == LotStatus.UNASSIGNED)
+                .collect(Collectors.toList());
         List<Player> players = playerRepo.findByTombolaId(tombolaId);
 
         if (availableLots.isEmpty() || players.isEmpty()) {
@@ -40,22 +42,23 @@ public class DrawServiceImpl implements DrawService {
 
         List<Lot> assignedLots = new ArrayList<>();
 
-        // Créer une liste de tickets pour la sélection aléatoire pondérée
+        // Build the ticket pool: each player appears as many times as their ticket count
         List<Player> ticketPool = new ArrayList<>();
         for (Player player : players) {
-            // Ajouter le joueur autant de fois qu'il a de tickets
             for (int i = 0; i < player.getTicketNumber(); i++) {
                 ticketPool.add(player);
             }
         }
 
         if (guaranteeOneLotPerParticipant) {
-            // First ensure each player gets at least one lot
+            // Step 1: Guarantee at least one lot per participant if possible
             Set<Player> playersWithLot = new HashSet<>();
+            List<Lot> stepOneLots = new ArrayList<>();
 
-            // Keep drawing until each player has at least one lot or no more lots available
-            while (playersWithLot.size() < players.size() && !availableLots.isEmpty()) {
-                // Create pool only with players who don't have a lot yet
+            List<Lot> lotsCopy = new ArrayList<>(availableLots);
+
+            while (playersWithLot.size() < players.size() && !lotsCopy.isEmpty()) {
+                // Only players without a lot
                 List<Player> remainingTicketPool = new ArrayList<>();
                 for (Player player : players) {
                     if (!playersWithLot.contains(player)) {
@@ -64,31 +67,48 @@ public class DrawServiceImpl implements DrawService {
                         }
                     }
                 }
-
-                if (!remainingTicketPool.isEmpty()) {
-                    // Select random player from remaining pool
-                    int randomIndex = ThreadLocalRandom.current().nextInt(remainingTicketPool.size());
-                    Player winner = remainingTicketPool.get(randomIndex);
-
-                    // Assign lot
-                    Lot lot = availableLots.remove(0);
-                    lot.setAssignedTo(winner);
-                    lot.setStatus(LotStatus.ASSIGNED);
-                    assignedLots.add(lot);
-                    playersWithLot.add(winner);
+                if (remainingTicketPool.isEmpty()) {
+                    break;
                 }
+                int randomIndex = ThreadLocalRandom.current().nextInt(remainingTicketPool.size());
+                Player winner = remainingTicketPool.get(randomIndex);
+
+                Lot lot = lotsCopy.removeFirst();
+                lot.setAssignedTo(winner);
+                lot.setStatus(LotStatus.ASSIGNED);
+                assignedLots.add(lot);
+                stepOneLots.add(lot);
+                playersWithLot.add(winner);
+
+                // Remove just one instance of this winner from the original ticket pool
+                ticketPool.remove(winner);
             }
+
+            // Remove assigned lots from availableLots (keep only the remaining)
+            availableLots.removeAll(stepOneLots);
         }
 
-        // Distribute remaining lots using full weighted random based on tickets
+        // Step 2: Assign all remaining lots randomly (weighted by remaining tickets)
+        // (Here, ticketPool contains all tickets that haven't been used for step 1)
         while (!availableLots.isEmpty() && !ticketPool.isEmpty()) {
             int randomIndex = ThreadLocalRandom.current().nextInt(ticketPool.size());
             Player winner = ticketPool.get(randomIndex);
 
-            // Remove all instances of this player from the ticket pool to prevent bias
-            ticketPool.removeIf(player -> player.getId().equals(winner.getId()));
+            Lot lot = availableLots.removeFirst();
+            lot.setAssignedTo(winner);
+            lot.setStatus(LotStatus.ASSIGNED);
+            assignedLots.add(lot);
 
-            Lot lot = availableLots.remove(0);
+            // Remove just one instance of winner (to use a ticket)
+            ticketPool.remove(randomIndex);
+        }
+
+        // If lots remain (e.g., less tickets than lots), assign them purely randomly among all players
+        while (!availableLots.isEmpty()) {
+            int randomIndex = random.nextInt(players.size());
+            Player winner = players.get(randomIndex);
+
+            Lot lot = availableLots.removeFirst();
             lot.setAssignedTo(winner);
             lot.setStatus(LotStatus.ASSIGNED);
             assignedLots.add(lot);
@@ -96,14 +116,6 @@ public class DrawServiceImpl implements DrawService {
 
         // Save all assigned lots
         lotRepo.saveAll(assignedLots);
-
-        // Get all winners
-        Set<Player> winners = assignedLots.stream()
-                .map(Lot::getAssignedTo)
-                .collect(Collectors.toSet());
-
-        // Save players (no need to set winner status as there's no such field)
-        playerRepo.saveAll(winners);
 
         // Convert to DTOs
         List<LotDto> lotDtos = assignedLots.stream()

@@ -1,3 +1,4 @@
+// src/main/java/com/frequencies/tombola/entity/Lot.java
 package com.frequencies.tombola.entity;
 
 import jakarta.persistence.*;
@@ -17,45 +18,44 @@ public class Lot {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Prize name (e.g. "Nintendo Switch")
+    // Name of the prize (e.g. "Nintendo Switch")
     private String name;
 
-    // Detailed description of the prize
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    // Contact's first name (donor)
+    private String donorFirstName;
 
-    // Associated tombola
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "tombola_id")
-    private Tombola tombola;
+    // Contact's last name (donor)
+    private String donorLastName;
 
-    // Donor name (individual or organization)
-    private String donorName;
+    // Company, association or shop
+    private String donorCompany;
 
-    // Donor contact info (email or phone)
-    private String donorContact;
+    // Contact's email (required)
+    @Column(nullable = false)
+    private String donorEmail;
 
-    // Monetary value of the prize in euros
+    // Contact's phone number (optional)
+    private String donorPhone;
+
+    // Prize value in euros
     @Column(precision = 10, scale = 2)
     private BigDecimal value;
 
     // URL to an image of the prize
     private String imageUrl;
 
-    /**
-     * A player can now receive multiple lots ⇒ ManyToOne.
-     * Removed unique = true and switched to ManyToOne.
-     */
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "tombola_id")
+    private Tombola tombola;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "player_id")  // no more unique = true
+    @JoinColumn(name = "player_id")
     private Player assignedTo;
 
-    // Lifecycle status of the prize
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private LotStatus status = LotStatus.UNASSIGNED;
 
-    // Whether the prize has been claimed
     @Column(nullable = false)
     @Builder.Default
     private boolean claimed = false;

@@ -1,4 +1,3 @@
-// src/main/java/com/frequencies/tombola/entity/Lot.java
 package com.frequencies.tombola.entity;
 
 import jakarta.persistence.*;
@@ -37,8 +36,8 @@ public class Lot {
     // Contact's phone number (optional)
     private String donorPhone;
 
-    // Prize value in euros
-    @Column(precision = 10, scale = 2)
+    // Prize value in euros (attention au mot réservé !)
+    @Column(name = "lot_value", precision = 10, scale = 2)
     private BigDecimal value;
 
     // URL to an image of the prize
@@ -53,6 +52,7 @@ public class Lot {
     private Player assignedTo;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     @Builder.Default
     private LotStatus status = LotStatus.UNASSIGNED;
 

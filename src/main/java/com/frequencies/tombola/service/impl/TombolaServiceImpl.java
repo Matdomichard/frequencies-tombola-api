@@ -81,9 +81,14 @@ public class TombolaServiceImpl implements TombolaService {
     }
 
     @Override
-    public void delete(Long id) {
+    public boolean delete(Long id) {
+        if (!tombolaRepository.existsById(id)) {
+            return false;
+        }
         tombolaRepository.deleteById(id);
+        return true;
     }
+
 
     /**
      * Fetch all players for a given tombola.

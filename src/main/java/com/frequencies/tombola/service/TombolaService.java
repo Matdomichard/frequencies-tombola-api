@@ -10,6 +10,6 @@ public interface TombolaService {
     List<TombolaDto> getAll();
     Optional<TombolaDto> getById(Long id);
     TombolaDto create(TombolaDto dto);
-    void delete(Long id);
+    boolean delete(Long id);
     List<PlayerDto> getPlayers(Long tombolaId);
 }

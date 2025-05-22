@@ -2,13 +2,17 @@ package com.frequencies.tombola.controller;
 
 import com.frequencies.tombola.dto.PlayerDto;
 import com.frequencies.tombola.service.PlayerService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller for direct access to individual Player resources.
+ * No global creation or listing: players are always created within a Tombola context.
+ */
 @RestController
 @RequestMapping("/players")
 @RequiredArgsConstructor
@@ -16,13 +20,11 @@ public class PlayerController {
 
     private final PlayerService playerService;
 
-    /** GET /players */
-    @GetMapping
-    public ResponseEntity<List<PlayerDto>> getAllPlayers() {
-        return ResponseEntity.ok(playerService.getAllPlayers());
-    }
-
-    /** GET /players/{id} */
+    /**
+     * Get player by ID.
+     * @param id Player ID
+     * @return 200 OK with PlayerDto or 404 Not Found
+     */
     @GetMapping("/{id}")
     public ResponseEntity<PlayerDto> getPlayerById(@PathVariable Long id) {
         return playerService.getPlayerById(id)
@@ -30,34 +32,46 @@ public class PlayerController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** PUT /players/{id} */
+    /**
+     * Full update of a player.
+     * @param id Player ID
+     * @param dto Updated player data
+     * @return 200 OK with updated PlayerDto or 404 Not Found
+     */
     @PutMapping("/{id}")
     public ResponseEntity<PlayerDto> updatePlayer(
             @PathVariable Long id,
-            @RequestBody PlayerDto dto
+            @Valid @RequestBody PlayerDto dto
     ) {
         return playerService.updatePlayer(id, dto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** DELETE /players/{id} */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePlayer(@PathVariable Long id) {
-        playerService.deletePlayer(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** PATCH /players/{id} */
+    /**
+     * Partial update of a player (PATCH).
+     * @param id Player ID
+     * @param changes Map of fields to update
+     * @return 200 OK with updated PlayerDto or 404 Not Found
+     */
     @PatchMapping("/{id}")
     public ResponseEntity<PlayerDto> patchPlayer(
             @PathVariable Long id,
-            @RequestBody Map<String,Object> changes
+            @RequestBody Map<String, Object> changes
     ) {
         return playerService.patchPlayer(id, changes)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
+    /**
+     * Delete player by ID.
+     * @param id Player ID
+     * @return 204 No Content if deleted, 404 Not Found otherwise
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePlayer(@PathVariable Long id) {
+        boolean deleted = playerService.deletePlayer(id);
+        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    }
 }

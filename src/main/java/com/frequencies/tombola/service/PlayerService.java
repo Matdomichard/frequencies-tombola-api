@@ -6,24 +6,22 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface PlayerService {
-    // liste tous les joueurs
-    List<PlayerDto> getAllPlayers();
 
-    // liste les joueurs d’une tombola donnée
+    // List players for a given tombola
     List<PlayerDto> getPlayersByTombola(Long tombolaId);
 
-    // récupère un joueur par son id
+    // Get a player by their id
     Optional<PlayerDto> getPlayerById(Long id);
 
-    // crée un joueur pour une tombola
+    // Create a player for a tombola
     PlayerDto createPlayer(Long tombolaId, PlayerDto dto);
 
-    // met à jour entièrement un joueur
+    // Fully update a player
     Optional<PlayerDto> updatePlayer(Long id, PlayerDto dto);
 
-    // applique partiellement des changements sur un joueur
+    // Partially update a player
     Optional<PlayerDto> patchPlayer(Long id, Map<String,Object> changes);
 
-    // supprime un joueur
-    void deletePlayer(Long id);
+    // Delete a player, returns true if deleted, false if not found
+    boolean deletePlayer(Long id);
 }

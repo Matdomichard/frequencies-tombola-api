@@ -40,25 +40,21 @@ public class LotServiceImplTest {
         lot1 = Lot.builder()
                 .id(1L)
                 .name("Lot 1")
-                .description("Description 1")
                 .build();
 
         lot2 = Lot.builder()
                 .id(2L)
                 .name("Lot 2")
-                .description("Description 2")
                 .build();
 
         lotDto1 = LotDto.builder()
                 .id(1L)
                 .name("Lot 1")
-                .description("Description 1")
                 .build();
 
         lotDto2 = LotDto.builder()
                 .id(2L)
                 .name("Lot 2")
-                .description("Description 2")
                 .build();
     }
 
@@ -110,24 +106,20 @@ public class LotServiceImplTest {
         // given
         LotDto newLotDto = LotDto.builder()
                 .name("New Lot")
-                .description("New Description")
                 .build();
 
         Lot newLot = Lot.builder()
                 .name("New Lot")
-                .description("New Description")
                 .build();
 
         Lot savedLot = Lot.builder()
                 .id(3L)
                 .name("New Lot")
-                .description("New Description")
                 .build();
 
         LotDto savedLotDto = LotDto.builder()
                 .id(3L)
                 .name("New Lot")
-                .description("New Description")
                 .build();
 
         when(lotMapper.toEntity(newLotDto)).thenReturn(newLot);
@@ -147,19 +139,16 @@ public class LotServiceImplTest {
         // given
         LotDto updatedLotDto = LotDto.builder()
                 .name("Updated Lot")
-                .description("Updated Description")
                 .build();
 
         Lot updatedLot = Lot.builder()
                 .id(1L)
                 .name("Updated Lot")
-                .description("Updated Description")
                 .build();
 
         LotDto resultLotDto = LotDto.builder()
                 .id(1L)
                 .name("Updated Lot")
-                .description("Updated Description")
                 .build();
 
         when(lotRepository.findById(1L)).thenReturn(Optional.of(lot1));
@@ -172,7 +161,6 @@ public class LotServiceImplTest {
         // then
         assertThat(result).isPresent();
         assertThat(result.get().getName()).isEqualTo("Updated Lot");
-        assertThat(result.get().getDescription()).isEqualTo("Updated Description");
     }
 
     @Test
@@ -180,7 +168,6 @@ public class LotServiceImplTest {
         // given
         LotDto updatedLotDto = LotDto.builder()
                 .name("Updated Lot")
-                .description("Updated Description")
                 .build();
 
         when(lotRepository.findById(3L)).thenReturn(Optional.empty());

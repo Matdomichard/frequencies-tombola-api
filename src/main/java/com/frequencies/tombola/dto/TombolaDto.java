@@ -1,5 +1,6 @@
 package com.frequencies.tombola.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -10,20 +11,20 @@ import java.time.LocalDateTime;
 @Builder
 public class TombolaDto {
     private Long id;
+
+    @NotBlank(message = "Tombola name is mandatory")
     private String name;
 
-    /** whether the tombola is active; default to true */
     @Builder.Default
     private boolean active = true;
 
-    /** the HelloAsso form “type” (e.g. Event, PaymentForm…) */
+    @NotBlank(message = "HelloAsso form type is required")
     @Builder.Default
     private String helloAssoFormType = "Event";
 
-    /** the HelloAsso form slug (e.g. tombola-1) */
+    @NotBlank(message = "HelloAsso form slug is required")
     private String helloAssoFormSlug;
 
-    /** timestamp when this tombola was created */
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

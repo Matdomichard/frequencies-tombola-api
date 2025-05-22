@@ -1,4 +1,3 @@
-// src/main/java/com/frequencies/tombola/service/impl/PlayerServiceImpl.java
 package com.frequencies.tombola.service.impl;
 
 import com.frequencies.tombola.dto.LotDto;
@@ -31,13 +30,6 @@ public class PlayerServiceImpl implements PlayerService {
     private final LotRepository lotRepository;
     private final PlayerMapper playerMapper;
     private final LotMapper lotMapper;
-
-    @Override
-    public List<PlayerDto> getAllPlayers() {
-        return playerRepository.findAll().stream()
-                .map(this::toDtoWithExtras)
-                .collect(Collectors.toList());
-    }
 
     @Override
     public List<PlayerDto> getPlayersByTombola(Long tombolaId) {
@@ -102,19 +94,22 @@ public class PlayerServiceImpl implements PlayerService {
     }
 
     @Override
-    public void deletePlayer(Long id) {
+    public boolean deletePlayer(Long id) {
+        if (!playerRepository.existsById(id)) {
+            return false;
+        }
         playerRepository.deleteById(id);
+        return true;
     }
 
-
     /**
-     * Enrichit le PlayerDto avec ticketNumber et assignedPrizeId (si un lot est attribué).
+     * Enrich the PlayerDto with ticketNumber and assignedLots.
      */
     private PlayerDto toDtoWithExtras(Player player) {
         PlayerDto dto = playerMapper.toDto(player);
         dto.setTicketNumber(player.getTicketNumber());
 
-        // Récupère tous les lots qui ont player_id = player.getId()
+        // Find all lots assigned to this player
         List<Lot> lots = lotRepository.findByAssignedTo_Id(player.getId());
         List<LotDto> lotDtos = lots.stream()
                 .map(lotMapper::toDto)
@@ -123,5 +118,4 @@ public class PlayerServiceImpl implements PlayerService {
 
         return dto;
     }
-
 }

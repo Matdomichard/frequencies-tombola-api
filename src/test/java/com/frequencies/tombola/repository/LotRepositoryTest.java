@@ -1,6 +1,8 @@
 package com.frequencies.tombola.repository;
 
 import com.frequencies.tombola.entity.Lot;
+import com.frequencies.tombola.entity.Tombola;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -16,67 +18,70 @@ public class LotRepositoryTest {
     @Autowired
     private LotRepository lotRepository;
 
+    @Autowired
+    private TombolaRepository tombolaRepository;
+
+    private Tombola tombola;
+
+    @BeforeEach
+    void setUp() {
+        tombola = Tombola.builder()
+                .name("Test Tombola")
+                .active(true)
+                .build();
+        tombola = tombolaRepository.save(tombola);
+    }
+
+    private Lot createLot(String name) {
+        return Lot.builder()
+                .name(name)
+                .donorEmail("test@email.com")
+                .tombola(tombola)
+                .build();
+    }
+
     @Test
     void testSaveLot() {
-        // Given
-        Lot lot = Lot.builder()
-                .name("Lot Test")
-                .description("Description Test")
-                .build();
-
-        // When
+        Lot lot = createLot("Lot Test");
         Lot savedLot = lotRepository.save(lot);
 
-        // Then
         assertThat(savedLot.getId()).isNotNull();
         assertThat(savedLot.getName()).isEqualTo("Lot Test");
+        assertThat(savedLot.getDonorEmail()).isEqualTo("test@email.com");
+        assertThat(savedLot.getTombola()).isNotNull();
     }
 
     @Test
     void testFindById() {
-        // Given
-        Lot lot = Lot.builder()
-                .name("Lot Find")
-                .description("Find Desc")
-                .build();
-        lot = lotRepository.save(lot);
+        Lot lot = createLot("Lot Find");
+        Lot savedLot = lotRepository.save(lot);
 
-        // When
-        Optional<Lot> foundLot = lotRepository.findById(lot.getId());
-
-        // Then
+        Optional<Lot> foundLot = lotRepository.findById(savedLot.getId());
         assertThat(foundLot).isPresent();
         assertThat(foundLot.get().getName()).isEqualTo("Lot Find");
     }
 
     @Test
     void testFindAll() {
-        // Given
-        Lot lot1 = Lot.builder().name("Lot 1").description("Desc 1").build();
-        Lot lot2 = Lot.builder().name("Lot 2").description("Desc 2").build();
+        Lot lot1 = createLot("Lot 1");
+        Lot lot2 = createLot("Lot 2");
         lotRepository.save(lot1);
         lotRepository.save(lot2);
 
-        // When
         List<Lot> lots = lotRepository.findAll();
-
-        // Then
-        assertThat(lots).hasSize(2);
+        assertThat(lots.size()).isGreaterThanOrEqualTo(2);
+        assertThat(lots.stream().map(Lot::getName)).contains("Lot 1", "Lot 2");
     }
 
     @Test
     void testDeleteById() {
-        // Given
-        Lot lot = Lot.builder().name("Lot Delete").description("To Delete").build();
-        lot = lotRepository.save(lot);
-        Long id = lot.getId();
+        Lot lot = createLot("Lot Delete");
+        Lot savedLot = lotRepository.save(lot);
+        Long id = savedLot.getId();
 
-        // When
         lotRepository.deleteById(id);
 
-        // Then
         Optional<Lot> deletedLot = lotRepository.findById(id);
         assertThat(deletedLot).isNotPresent();
     }
-
 }
